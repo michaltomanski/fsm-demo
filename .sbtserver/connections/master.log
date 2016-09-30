@@ -1,0 +1,8 @@
+New log file opened at Thu Sep 29 21:08:13 CEST 2016 by 26635@ThinkPad
+Taking next connection to: 27709
+Checking to see if clients are empty...
+No non-daemon clients connected after 3 min. Shutting down.
+Server socket thread exiting.
+0 clients open, will close them...
+All client sockets have been closed.
+Closing the 26635@ThinkPad logs at Thu Sep 29 21:11:13 CEST 2016, goodbye.
