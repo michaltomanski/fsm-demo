@@ -5,6 +5,8 @@
 GET     /                           pl.mtomanski.fsmdemo.controllers.TicketMachineController.index
 
 POST    /create                     pl.mtomanski.fsmdemo.controllers.TicketMachineController.create
+POST    /selectConnection           pl.mtomanski.fsmdemo.controllers.TicketMachineController.selectConnection
+POST    /payment                    pl.mtomanski.fsmdemo.controllers.TicketMachineController.payment
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

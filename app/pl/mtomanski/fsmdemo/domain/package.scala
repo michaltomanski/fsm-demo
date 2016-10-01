@@ -15,5 +15,13 @@ package object domain {
 
   final case class Destination(id: Id, name: String)
 
+  object Destination {
+    implicit val format = Json.format[Destination]
+  }
+
   final case class Connection(id: Id, origin: Origin, destination: Destination, departure: String)
+
+  object Connection {
+    implicit val format = Json.format[Connection]
+  }
 }
