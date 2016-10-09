@@ -44,9 +44,11 @@ class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
 
 	when(WaitingForPayment, reservationTimeout) {
 		case Event(PaymentSuccessful(paymentId), data: ContextWithSelectedConnection) =>
+			println("Payment received")
 			println("Going to PrintingOutTickets")
 			goto(PrintingOutTickets) applying PaymentMade(paymentId)
 		case Event(StateTimeout, _) =>
+			println("Timeout received!")
 			println("Going to FetchingSoonestConnections")
 			goto(FetchingSoonestConnections) applying ReservationTimeoutOccurred
 	}
