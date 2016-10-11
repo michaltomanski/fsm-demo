@@ -3,7 +3,6 @@ package pl.mtomanski.fsmdemo.machine
 import akka.actor.{ActorRef, Props}
 import akka.persistence.fsm.PersistentFSM
 import pl.mtomanski.fsmdemo.actors.ConnectionActor.{FetchSoonestConnections, SoonestConnectionsFromOrigin}
-import pl.mtomanski.fsmdemo.actors.GatewayActor.{PaymentFailed, SoonestConnections}
 import pl.mtomanski.fsmdemo.actors.PrintoutActor.{PrintOutFinished, PrintOutTicket}
 import pl.mtomanski.fsmdemo.actors.ReservationActor.{CancelReservation, MakeReservation}
 import pl.mtomanski.fsmdemo.domain.{ConnectionSelected, _}
@@ -11,13 +10,15 @@ import pl.mtomanski.fsmdemo.domain.{ConnectionSelected, _}
 import scala.concurrent.duration._
 import scala.reflect._
 
-class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
+class TicketMachine(connectionActor: ActorRef,
                     reservationActor: ActorRef, printOutActor: ActorRef) extends PersistentFSM[TicketMachineState, TicketMachineContext, TicketMachineEvent] {
 
 
   override def domainEventClassTag: ClassTag[TicketMachineEvent] = classTag[TicketMachineEvent]
 
   override def persistenceId: String = "TicketMachine"
+
+  val reservationTimeout = 20.seconds
 
   override def applyEvent(domainEvent: TicketMachineEvent, currentData: TicketMachineContext): TicketMachineContext =
     (domainEvent, currentData) match {
@@ -29,6 +30,8 @@ class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
         ContextWithSelectedConnection(id, origin, selectedConnection = connection)
       case (PaymentMade(paymentId), ContextWithSelectedConnection(id, origin, selectedConnection)) =>
         ContextWithPayment(id, origin, selectedConnection, paymentId)
+      case (ReservationTimeoutOccurred, ContextWithSelectedConnection(id, origin, selectedConnection)) =>
+        ContextWithOrigin(id, origin)
     }
 
   startWith(Idle, Empty)
@@ -49,9 +52,11 @@ class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
       goto(WaitingForPayment) applying ConnectionSelected(connection) replying connection.id
   }
 
-  when(WaitingForPayment) {
+  when(WaitingForPayment, reservationTimeout) {
     case Event(PaymentSuccessful(paymentId), data: ContextWithSelectedConnection) =>
       goto(PrintingOutTickets) applying PaymentMade(paymentId) replying paymentId
+    case Event(StateTimeout, _) =>
+      goto(FetchingSoonestConnections) applying ReservationTimeoutOccurred
   }
 
   when(PrintingOutTickets) {
@@ -85,6 +90,14 @@ class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
           println("Going to PrintingOutTickets")
           printOutActor ! PrintOutTicket(selectedConnection)
       }
+    case WaitingForPayment -> FetchingSoonestConnections =>
+      stateData match {
+        case ContextWithSelectedConnection(id, origin, selectedConnection) =>
+          println("Timeout received")
+          println("Going to FetchingSoonestConnections")
+          reservationActor ! CancelReservation(selectedConnection)
+          connectionActor ! FetchSoonestConnections(origin)
+      }
   }
 
   override def onRecoveryCompleted(): Unit = println("Recovery completed :-)")
@@ -103,6 +116,6 @@ class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
 
 
 object TicketMachine {
-  def props(gatewayActor: ActorRef, connectionActor: ActorRef,
-            reservationActor: ActorRef, printOutActor: ActorRef): Props = Props(new TicketMachine(gatewayActor, connectionActor, reservationActor, printOutActor))
+  def props(connectionActor: ActorRef,
+            reservationActor: ActorRef, printOutActor: ActorRef): Props = Props(new TicketMachine(connectionActor, reservationActor, printOutActor))
 }

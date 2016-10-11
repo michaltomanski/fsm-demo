@@ -1,6 +1,6 @@
 package pl.mtomanski.fsmdemo
 
-import pl.mtomanski.fsmdemo.actors.{ConnectionActor, GatewayActor, PrintoutActor, ReservationActor}
+import pl.mtomanski.fsmdemo.actors.{ConnectionActor, PrintoutActor, ReservationActor}
 import pl.mtomanski.fsmdemo.machine.TicketMachine
 import play.api.{Application, ApplicationLoader, BuiltInComponentsFromContext}
 import play.api.ApplicationLoader.Context
@@ -13,13 +13,12 @@ class AppLoader extends ApplicationLoader {
 
 class MyComponents(context: Context) extends BuiltInComponentsFromContext(context) {
 
-  val gatewayActor = actorSystem.actorOf(GatewayActor.props())
   val connectionActor = actorSystem.actorOf(ConnectionActor.props())
   val reservationActor = actorSystem.actorOf(ReservationActor.props())
   val printOutActor = actorSystem.actorOf(PrintoutActor.props())
 
   val ticketMachine = actorSystem.actorOf(TicketMachine.props(
-    gatewayActor, connectionActor, reservationActor, printOutActor))
+    connectionActor, reservationActor, printOutActor))
 
 
   lazy val router = new Routes(httpErrorHandler, applicationController, null)
