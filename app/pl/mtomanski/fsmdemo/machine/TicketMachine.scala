@@ -51,7 +51,13 @@ class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
 
   when(WaitingForPayment) {
     case Event(PaymentSuccessful(paymentId), data: ContextWithSelectedConnection) =>
-      goto(PrintingOutTickets) applying PaymentMade(paymentId)
+      goto(PrintingOutTickets) applying PaymentMade(paymentId) replying paymentId
+  }
+
+  when(PrintingOutTickets) {
+    case Event(PrintOutFinished(ticketNumber, connection), data: ContextWithPayment) =>
+      println(s"Ticket $ticketNumber printed successfully")
+      stop()
   }
 
   onTransition {
