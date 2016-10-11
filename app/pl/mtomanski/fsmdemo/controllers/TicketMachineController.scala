@@ -5,7 +5,6 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.pattern.ask
 import akka.util.Timeout
 import pl.mtomanski.fsmdemo.domain._
-import pl.mtomanski.fsmdemo.machine.UnhandledError
 import play.api.mvc.{Action, Controller}
 
 import scala.concurrent.duration._
@@ -41,4 +40,5 @@ class TicketMachineController (ticketMachine: ActorRef) extends Controller {
   }
 }
 
+case class UnhandledError(msg: String)
 

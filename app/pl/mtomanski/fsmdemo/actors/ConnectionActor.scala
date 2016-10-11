@@ -10,6 +10,7 @@ class ConnectionActor extends Actor {
 
   override def receive = {
     case FetchSoonestConnections(origin) =>
+      println("Connection actor is fetching soonest connections")
       sender() ! getSoonestConnections(origin)
   }
 
