@@ -27,6 +27,8 @@ class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
         ContextWithConnections(id, origin, connections)
       case (ConnectionSelected(connection), ContextWithConnections(id, origin, connections)) =>
         ContextWithSelectedConnection(id, origin, selectedConnection = connection)
+      case (PaymentMade(paymentId), ContextWithSelectedConnection(id, origin, selectedConnection)) =>
+        ContextWithPayment(id, origin, selectedConnection, paymentId)
     }
 
   startWith(Idle, Empty)
@@ -44,7 +46,12 @@ class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
 
   when(WaitingForConnectionSelection) {
     case Event(SelectConnection(connection), data: ContextWithConnections) =>
-      goto(WaitingForPayment) applying ConnectionSelected(connection)
+      goto(WaitingForPayment) applying ConnectionSelected(connection) replying connection.id
+  }
+
+  when(WaitingForPayment) {
+    case Event(PaymentSuccessful(paymentId), data: ContextWithSelectedConnection) =>
+      goto(PrintingOutTickets) applying PaymentMade(paymentId)
   }
 
   onTransition {
@@ -65,6 +72,12 @@ class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
         case ContextWithSelectedConnection(id, origin, selectedConnection) =>
           println("Going to WaitingForPayment")
           reservationActor ! MakeReservation(selectedConnection)
+      }
+    case WaitingForPayment -> PrintingOutTickets =>
+      nextStateData match {
+        case ContextWithPayment(id, origin, selectedConnection, paymentId) =>
+          println("Going to PrintingOutTickets")
+          printOutActor ! PrintOutTicket(selectedConnection)
       }
   }
 
