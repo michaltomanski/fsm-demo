@@ -20,9 +20,11 @@ class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
   override def persistenceId: String = "TicketMachine"
 
   override def applyEvent(domainEvent: TicketMachineEvent, currentData: TicketMachineContext): TicketMachineContext =
-    domainEvent match {
-      case TicketMachineCreated(id, origin) =>
+    (domainEvent, currentData) match {
+      case (TicketMachineCreated(id, origin), _) =>
         ContextWithOrigin(id, origin)
+      case (SoonestConnectionsFetched(connections), ContextWithOrigin(id, origin)) =>
+        ContextWithConnections(id, origin, connections)
     }
 
   startWith(Idle, Empty)
@@ -33,6 +35,11 @@ class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
       goto(FetchingSoonestConnections) applying TicketMachineCreated(id, origin) replying id
   }
 
+  when(FetchingSoonestConnections) {
+    case Event(SoonestConnectionsFromOrigin(connections), data: ContextWithOrigin) =>
+      goto(WaitingForConnectionSelection) applying SoonestConnectionsFetched(connections)
+  }
+
   onTransition {
     case Idle -> FetchingSoonestConnections =>
       nextStateData match {
@@ -40,6 +47,11 @@ class TicketMachine(gatewayActor: ActorRef, connectionActor: ActorRef,
           println("Going to FetchingSoonestConnections")
           connectionActor ! FetchSoonestConnections(origin)
         }
+      }
+    case FetchingSoonestConnections -> WaitingForConnectionSelection =>
+      nextStateData match {
+        case ContextWithConnections(id, origin, connections) =>
+          println("Going to WaitingForConnectionSelection")
       }
   }
 
