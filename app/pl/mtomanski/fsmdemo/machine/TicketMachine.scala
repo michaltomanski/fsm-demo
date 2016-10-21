@@ -5,7 +5,7 @@ import akka.persistence.fsm.PersistentFSM
 import pl.mtomanski.fsmdemo.actors.ConnectionActor.{FetchSoonestConnections, SoonestConnectionsFromOrigin}
 import pl.mtomanski.fsmdemo.actors.PrintoutActor.{PrintOutFinished, PrintOutTicket}
 import pl.mtomanski.fsmdemo.actors.ReservationActor.{CancelReservation, MakeReservation}
-import pl.mtomanski.fsmdemo.domain.{ConnectionSelected, _}
+import pl.mtomanski.fsmdemo.domain._
 
 import scala.concurrent.duration._
 import scala.reflect._
@@ -21,19 +21,20 @@ class TicketMachine(connectionActor: ActorRef,
   val reservationTimeout = 20.seconds
 
   override def applyEvent(domainEvent: TicketMachineEvent, currentData: TicketMachineContext): TicketMachineContext =
-    (domainEvent, currentData) match {
-      case (TicketMachineCreated(id, origin), _) =>
-        ContextWithOrigin(id, origin)
-      case (SoonestConnectionsFetched(connections), ContextWithOrigin(id, origin)) =>
-        ContextWithConnections(id, origin, connections)
-      case (ConnectionSelected(connection), ContextWithConnections(id, origin, connections)) =>
-        ContextWithSelectedConnection(id, origin, selectedConnection = connection)
-      case (PaymentMade(paymentId), ContextWithSelectedConnection(id, origin, selectedConnection)) =>
-        ContextWithPayment(id, origin, selectedConnection, paymentId)
-      case (ReservationTimeoutOccurred, ContextWithSelectedConnection(id, origin, selectedConnection)) =>
-        ContextWithOrigin(id, origin)
-    }
+    domainEvent match {
+      case TicketMachineCreated(id, origin) =>
+        currentData.addIdAndOrigin(id, origin)
+      case SoonestConnectionsFetched(connections) =>
+        currentData.addConnections(connections)
+      case ConnectionSelected(connection) =>
+        currentData.selectConnection(connection)
+      case PaymentMade(paymentId) =>
+        currentData.paymentDone(paymentId)
+      case ReservationTimeoutOccurred =>
+        currentData.resetAfterTimeout()
+      }
 
+  
   startWith(Idle, Empty)
 
   when(Idle) {
