@@ -2,9 +2,9 @@
 This repo contains a project used for demonstrating Finite-State Machine in practice.
 
 There are three approaches to the problem implemented on separate branches:
-* _akka-fsm_ shows usage of Akka FSM
-* _akka-persistence-fsm_ shows usage of Akka Persistence FSM
-* _akka_persistence_clustering_ shows a combined usage of Akka Persistence FSM with Akka Cluster Sharding     
+* `akka-fsm` shows usage of Akka FSM
+* `akka-persistence-fsm` shows usage of Akka Persistence FSM
+* `akka-persistence-clustering` shows a combined usage of Akka Persistence FSM with Akka Cluster Sharding     
 
 # Ticket machine
 To present the features of Finite-State Machine, a very basic idea of a train ticket machine was conceived. 
