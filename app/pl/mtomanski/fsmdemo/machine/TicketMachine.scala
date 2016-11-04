@@ -70,35 +70,32 @@ class TicketMachine(connectionActor: ActorRef,
     case Idle -> FetchingSoonestConnections =>
       nextStateData match {
         case ContextWithOrigin(id, origin) => {
-          println("Going to FetchingSoonestConnections")
           connectionActor ! FetchSoonestConnections(origin)
         }
-      }
-    case FetchingSoonestConnections -> WaitingForConnectionSelection =>
-      nextStateData match {
-        case ContextWithConnections(id, origin, connections) =>
-          println("Going to WaitingForConnectionSelection")
       }
     case WaitingForConnectionSelection -> WaitingForPayment =>
       nextStateData match {
         case ContextWithSelectedConnection(id, origin, selectedConnection) =>
-          println("Going to WaitingForPayment")
           reservationActor ! MakeReservation(selectedConnection)
       }
     case WaitingForPayment -> PrintingOutTickets =>
       nextStateData match {
         case ContextWithPayment(id, origin, selectedConnection, paymentId) =>
-          println("Going to PrintingOutTickets")
           printOutActor ! PrintOutTicket(selectedConnection)
       }
     case WaitingForPayment -> FetchingSoonestConnections =>
       stateData match {
         case ContextWithSelectedConnection(id, origin, selectedConnection) =>
           println("Timeout received")
-          println("Going to FetchingSoonestConnections")
           reservationActor ! CancelReservation(selectedConnection)
           connectionActor ! FetchSoonestConnections(origin)
       }
+  }
+
+  onTransition {
+    case (a: TicketMachineState) -> (b: TicketMachineState) =>
+      println(s"Going from ${a.getClass.getSimpleName} to ${b.getClass.getSimpleName}")
+
   }
 
   override def onRecoveryCompleted(): Unit = println("Recovery completed :-)")
