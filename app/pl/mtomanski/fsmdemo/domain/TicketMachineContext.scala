@@ -1,28 +1,28 @@
 package pl.mtomanski.fsmdemo.domain
 
-sealed trait TicketMachineContext {
-  def addConnections(connections: Seq[Connection]): TicketMachineContext = this match {
-    case ContextWithOrigin(id, origin) => ContextWithConnections(id, origin, connections)
+sealed trait TicketMachineData {
+  def addConnections(connections: Seq[Connection]): TicketMachineData = this match {
+    case DataWithOrigin(id, origin) => DataWithConnections(id, origin, connections)
   }
-  def selectConnection(connection: Connection): TicketMachineContext = this match {
-    case ContextWithConnections(id, origin, connections) => ContextWithSelectedConnection(id, origin, connection)
+  def selectConnection(connection: Connection): TicketMachineData = this match {
+    case DataWithConnections(id, origin, connections) => DataWithSelectedConnection(id, origin, connection)
   }
-  def paymentDone(paymentId: Id): TicketMachineContext = this match {
-    case ContextWithSelectedConnection(id, origin, connection) => ContextWithPayment(id, origin, connection, paymentId)
+  def paymentDone(paymentId: Id): TicketMachineData = this match {
+    case DataWithSelectedConnection(id, origin, connection) => DataWithPayment(id, origin, connection, paymentId)
   }
-  def addIdAndOrigin(id: Id, origin: Origin): TicketMachineContext = ContextWithOrigin(id, origin)
+  def addIdAndOrigin(id: Id, origin: Origin): TicketMachineData = DataWithOrigin(id, origin)
 
   def resetAfterTimeout() = this match {
-    case ContextWithSelectedConnection(id, origin, connection) => ContextWithOrigin(id, origin)
+    case DataWithSelectedConnection(id, origin, connection) => DataWithOrigin(id, origin)
   }
 }
 
-case object Empty extends TicketMachineContext
+case object Empty extends TicketMachineData
 
-final case class ContextWithOrigin(id: Id, origin: Origin) extends TicketMachineContext
+final case class DataWithOrigin(id: Id, origin: Origin) extends TicketMachineData
 
-final case class ContextWithConnections(id: Id, origin: Origin, connections: Seq[Connection]) extends TicketMachineContext
+final case class DataWithConnections(id: Id, origin: Origin, connections: Seq[Connection]) extends TicketMachineData
 
-final case class ContextWithSelectedConnection(id: Id, origin: Origin, selectedConnection: Connection) extends TicketMachineContext
+final case class DataWithSelectedConnection(id: Id, origin: Origin, selectedConnection: Connection) extends TicketMachineData
 
-final case class ContextWithPayment(id: Id, origin: Origin, selectedConnection: Connection, paymentId: Id) extends TicketMachineContext
+final case class DataWithPayment(id: Id, origin: Origin, selectedConnection: Connection, paymentId: Id) extends TicketMachineData

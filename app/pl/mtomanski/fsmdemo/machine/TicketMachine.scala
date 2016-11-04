@@ -11,7 +11,7 @@ import scala.concurrent.duration._
 import scala.reflect._
 
 class TicketMachine(connectionActor: ActorRef,
-                    reservationActor: ActorRef, printOutActor: ActorRef) extends PersistentFSM[TicketMachineState, TicketMachineContext, TicketMachineEvent] {
+                    reservationActor: ActorRef, printOutActor: ActorRef) extends PersistentFSM[TicketMachineState, TicketMachineData, TicketMachineEvent] {
 
 
   override def domainEventClassTag: ClassTag[TicketMachineEvent] = classTag[TicketMachineEvent]
@@ -20,7 +20,7 @@ class TicketMachine(connectionActor: ActorRef,
 
   val reservationTimeout = 20.seconds
 
-  override def applyEvent(domainEvent: TicketMachineEvent, currentData: TicketMachineContext): TicketMachineContext =
+  override def applyEvent(domainEvent: TicketMachineEvent, currentData: TicketMachineData): TicketMachineData =
     domainEvent match {
       case TicketMachineCreated(id, origin) =>
         currentData.addIdAndOrigin(id, origin)
@@ -33,7 +33,6 @@ class TicketMachine(connectionActor: ActorRef,
       case ReservationTimeoutOccurred =>
         currentData.resetAfterTimeout()
       }
-
   
   startWith(Idle, Empty)
 
@@ -44,24 +43,24 @@ class TicketMachine(connectionActor: ActorRef,
   }
 
   when(FetchingSoonestConnections) {
-    case Event(SoonestConnectionsFromOrigin(connections), data: ContextWithOrigin) =>
+    case Event(SoonestConnectionsFromOrigin(connections), data: DataWithOrigin) =>
       goto(WaitingForConnectionSelection) applying SoonestConnectionsFetched(connections)
   }
 
   when(WaitingForConnectionSelection) {
-    case Event(SelectConnection(connection), data: ContextWithConnections) =>
+    case Event(SelectConnection(connection), data: DataWithConnections) =>
       goto(WaitingForPayment) applying ConnectionSelected(connection) replying connection.id
   }
 
   when(WaitingForPayment, reservationTimeout) {
-    case Event(PaymentSuccessful(paymentId), data: ContextWithSelectedConnection) =>
+    case Event(PaymentSuccessful(paymentId), data: DataWithSelectedConnection) =>
       goto(PrintingOutTickets) applying PaymentMade(paymentId) replying paymentId
     case Event(StateTimeout, _) =>
       goto(FetchingSoonestConnections) applying ReservationTimeoutOccurred
   }
 
   when(PrintingOutTickets) {
-    case Event(PrintOutFinished(ticketNumber, connection), data: ContextWithPayment) =>
+    case Event(PrintOutFinished(ticketNumber, connection), data: DataWithPayment) =>
       println(s"Ticket $ticketNumber printed successfully")
       stop()
   }
@@ -69,36 +68,33 @@ class TicketMachine(connectionActor: ActorRef,
   onTransition {
     case Idle -> FetchingSoonestConnections =>
       nextStateData match {
-        case ContextWithOrigin(id, origin) => {
-          println("Going to FetchingSoonestConnections")
+        case DataWithOrigin(id, origin) => {
           connectionActor ! FetchSoonestConnections(origin)
         }
       }
-    case FetchingSoonestConnections -> WaitingForConnectionSelection =>
-      nextStateData match {
-        case ContextWithConnections(id, origin, connections) =>
-          println("Going to WaitingForConnectionSelection")
-      }
     case WaitingForConnectionSelection -> WaitingForPayment =>
       nextStateData match {
-        case ContextWithSelectedConnection(id, origin, selectedConnection) =>
-          println("Going to WaitingForPayment")
+        case DataWithSelectedConnection(id, origin, selectedConnection) =>
           reservationActor ! MakeReservation(selectedConnection)
       }
     case WaitingForPayment -> PrintingOutTickets =>
       nextStateData match {
-        case ContextWithPayment(id, origin, selectedConnection, paymentId) =>
-          println("Going to PrintingOutTickets")
+        case DataWithPayment(id, origin, selectedConnection, paymentId) =>
           printOutActor ! PrintOutTicket(selectedConnection)
       }
     case WaitingForPayment -> FetchingSoonestConnections =>
       stateData match {
-        case ContextWithSelectedConnection(id, origin, selectedConnection) =>
+        case DataWithSelectedConnection(id, origin, selectedConnection) =>
           println("Timeout received")
-          println("Going to FetchingSoonestConnections")
           reservationActor ! CancelReservation(selectedConnection)
           connectionActor ! FetchSoonestConnections(origin)
       }
+  }
+
+  onTransition {
+    case (a: TicketMachineState) -> (b: TicketMachineState) =>
+      println(s"Going from ${a.getClass.getSimpleName} to ${b.getClass.getSimpleName}")
+
   }
 
   override def onRecoveryCompleted(): Unit = println("Recovery completed :-)")
