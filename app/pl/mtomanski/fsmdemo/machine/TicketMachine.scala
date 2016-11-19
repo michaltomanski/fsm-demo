@@ -50,16 +50,19 @@ class TicketMachine(connectionActor: ActorRef,
         case DataWithOrigin(id, origin) => {
           connectionActor ! FetchSoonestConnections(origin)
         }
+        case _: TicketMachineData => ???
       }
     case WaitingForConnectionSelection -> WaitingForPayment =>
       nextStateData match {
         case DataWithSelectedConnection(id, origin, selectedConnection) =>
           reservationActor ! MakeReservation(selectedConnection)
+        case _: TicketMachineData => ???
       }
     case WaitingForPayment -> PrintingOutTickets =>
       nextStateData match {
         case DataWithPayment(id, origin, selectedConnection, paymentId) =>
           printOutActor ! PrintOutTicket(selectedConnection)
+        case _: TicketMachineData => ???
       }
     case WaitingForPayment -> FetchingSoonestConnections =>
       stateData match {
@@ -67,6 +70,7 @@ class TicketMachine(connectionActor: ActorRef,
           println("Timeout received")
           reservationActor ! CancelReservation(selectedConnection)
           connectionActor ! FetchSoonestConnections(origin)
+        case _: TicketMachineData => ???
       }
   }
 
@@ -75,7 +79,18 @@ class TicketMachine(connectionActor: ActorRef,
       println(s"Going from ${a.getClass.getSimpleName} to ${b.getClass.getSimpleName}")
   }
 
+  whenUnhandled {
+    case Event(x: CreateTicketMachine, data) =>
+      println("Ticket machine already created!")
+      stay
+    case Event(e, _) =>
+      println("Don't know what to do")
+      stay
+  }
+
+
   initialize()
+
 
 }
 
