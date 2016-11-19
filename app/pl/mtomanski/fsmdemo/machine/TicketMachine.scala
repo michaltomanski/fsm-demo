@@ -71,16 +71,19 @@ class TicketMachine(connectionActor: ActorRef,
         case DataWithOrigin(id, origin) => {
           connectionActor ! FetchSoonestConnections(origin)
         }
+        case _: TicketMachineData => ???
       }
     case WaitingForConnectionSelection -> WaitingForPayment =>
       nextStateData match {
         case DataWithSelectedConnection(id, origin, selectedConnection) =>
           reservationActor ! MakeReservation(selectedConnection)
+        case _: TicketMachineData => ???
       }
     case WaitingForPayment -> PrintingOutTickets =>
       nextStateData match {
         case DataWithPayment(id, origin, selectedConnection, paymentId) =>
           printOutActor ! PrintOutTicket(selectedConnection)
+        case _: TicketMachineData => ???
       }
     case WaitingForPayment -> FetchingSoonestConnections =>
       stateData match {
@@ -88,6 +91,7 @@ class TicketMachine(connectionActor: ActorRef,
           println("Timeout received")
           reservationActor ! CancelReservation(selectedConnection)
           connectionActor ! FetchSoonestConnections(origin)
+        case _: TicketMachineData => ???
       }
   }
 
