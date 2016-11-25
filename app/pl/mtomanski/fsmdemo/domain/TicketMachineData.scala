@@ -3,21 +3,17 @@ package pl.mtomanski.fsmdemo.domain
 sealed trait TicketMachineData {
   def addConnections(connections: Seq[Connection]): TicketMachineData = this match {
     case DataWithOrigin(id, origin) => DataWithConnections(id, origin, connections)
-    case _ => ???
   }
   def selectConnection(connection: Connection): TicketMachineData = this match {
     case DataWithConnections(id, origin, connections) => DataWithSelectedConnection(id, origin, connection)
-    case _ => ???
   }
   def paymentDone(paymentId: Id): TicketMachineData = this match {
     case DataWithSelectedConnection(id, origin, connection) => DataWithPayment(id, origin, connection, paymentId)
-    case _ => ???
   }
   def addIdAndOrigin(id: Id, origin: Origin): TicketMachineData = DataWithOrigin(id, origin)
 
   def resetAfterTimeout() = this match {
     case DataWithSelectedConnection(id, origin, connection) => DataWithOrigin(id, origin)
-    case _ => ???
   }
 }
 
